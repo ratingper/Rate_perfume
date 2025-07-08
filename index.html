@@ -303,7 +303,7 @@ body {
 
 /* Hero Section */
 .hero {
-    background: linear-gradient(135deg, rgba(18,18,18,0.9), rgba(18,18,18,0.9));
+    background: None;
     padding: 120px 20px 80px;
     text-align: center;
     color: #f7d468;
@@ -1069,22 +1069,29 @@ html {
         </div>
     </nav>
 
-    <!-- Hero Section -->
-    <section id="home" class="hero">
-        <div class="hero-container">
-            <h1 class="hero-title">
-                Find Your
-                <span class="hero-highlight">Perfect Perfume</span>
-            </h1>
-            <p class="hero-description">
-                Explore authentic reviews, discover new scents, and find the perfect fragrance that matches your personality and style.
-            </p>
-            <div class="hero-search">
-                <button class="cta-button" onclick="location.href='discovery.html#auth'">Explore Collection</button>
-            </div>
+   <!-- Hero Section -->
+<section id="home" class="hero" style="position: relative; overflow: hidden;">
+    <!-- Background Video -->
+    <video autoplay muted loop playsinline class="hero-video" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1;">
+        <source src="vid.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    <div class="hero-container" style="position: relative; z-index: 1;">
+        <h1 class="hero-title">
+            Find Your
+            <span class="hero-highlight">Perfect Perfume</span>
+        </h1>
+        <p class="hero-description">
+            Explore authentic reviews, discover new scents, and find the perfect fragrance that matches your personality and style.
+        </p>
+        <div class="hero-search">
+            <button class="cta-button" onclick="location.href='discovery.html#auth'">Explore Collection</button>
         </div>
-        <div id="auth" class="page"></div>
-    </section>
+    </div>
+    <div id="auth" class="page"></div>
+</section>
+
 
     <!-- Collection Section -->
     <section id="collection" class="collection">
