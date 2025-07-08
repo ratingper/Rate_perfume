@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find Your Scent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Roboto:wght@300;400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="user-info"></div>
+    <div id="email-verification-notice">Please check your inbox to verify your email address.</div>
+    <div id="admin-link-container"></div>
+
+    <!-- Auth Page -->
+    <div id="page-auth" class="page active">
+        <a href="index.html" class="btn btn-home">Home</a>
+        <main class="container">
+            <section class="auth-page-content">
+                <h1 id="auth-header">Welcome!</h1>
+                <p>Please choose an option to continue.</p>
+                <div class="button-group">
+                    <button class="btn" id="go-to-login-btn">Login / Sign Up</button>
+                    <button class="btn" id="continue-as-guest-btn">Continue as Guest</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Signup Page -->
+    <div id="page-signup" class="page">
+        <a href="index.html" class="btn btn-home">Home</a>
+        <main class="container">
+            <section class="auth-page-content">
+                <h1 id="signup-header">Create an Account</h1>
+                <form id="signup-form" novalidate>
+                    <div class="form-group">
+                        <label for="signup-name">Your Name</label>
+                        <input type="text" id="signup-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-email">Email Address</label>
+                        <input type="email" id="signup-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-password">Password (min. 6 characters)</label>
+                        <input type="password" id="signup-password" required minlength="6">
+                    </div>
+                    <button type="submit" class="btn">Create Account</button>
+                </form>
+                <button class="btn btn-google" id="google-signup-btn" type="button">
+                    <img src="https://static.vecteezy.com/system/resources/previews/022/613/027/non_2x/google-icon-logo-symbol-free-png.png" alt="Google logo">
+                    <span>Sign up with Google</span>
+                </button>
+                <p style="margin-top:1rem;">Already have an account? <a href="#login" class="text-link">Log In</a></p>
+            </section>
+            <div id="auth-message" class="auth-message"></div>
+        </main>
+    </div>
+
+    <!-- Login Page -->
+    <div id="page-login" class="page">
+        <a href="index.html" class="btn btn-home">Home</a>
+        <main class="container">
+            <section class="auth-page-content">
+                <h1 id="login-header">Login</h1>
+                <form id="login-form" novalidate>
+                    <div class="form-group">
+                        <label for="login-email">Email Address</label>
+                        <input type="email" id="login-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" required>
+                    </div>
+                    <button type="submit" class="btn">Log In</button>
+                </form>
+                <p style="margin-top: 0.75rem; text-align: center;">
+                    <a href="#" id="forgot-password-btn" class="text-link">Forgot Password?</a>
+                </p>
+                <div id="forgot-password-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:1000;">
+                    <div id="forgot-password-modal" class="modal-content" style="background:#fff; padding:1.5rem 2rem; border-radius:5px; max-width:400px; width:90%; position:relative;">
+                        <button id="close-forgot-modal" aria-label="Close" style="position:absolute; top:0.25rem; right:0.5rem; font-size:1.5rem; background:none; border:none; cursor:pointer;">×</button>
+                        <h2 id="forgot-password-header">Forgot Password</h2>
+                        <form id="forgot-password-form" novalidate>
+                            <div class="form-group">
+                                <label for="forgot-modal-email">Email Address</label>
+                                <input type="email" id="forgot-modal-email" name="forgot-modal-email" placeholder="Enter your email" required style="width:100%; padding:0.5rem; margin-top:0.5rem;">
+                            </div>
+                            <button id="forgot-modal-submit" type="submit" class="btn" style="margin-top:1rem;">Send Reset Link</button>
+                        </form>
+                        <p id="forgot-modal-message" style="margin-top:1rem; color:#333;">We'll send a password reset link to your email.</p>
+                    </div>
+                </div>
+                <div class="auth-separator">OR</div>
+                <button class="btn btn-google" id="google-login-btn">
+                    <img src="https://static.vecteezy.com/system/resources/previews/022/613/027/non_2x/google-icon-logo-symbol-free-png.png" alt="Google logo">
+                    <span>Sign in with Google</span>
+                </button>
+                <p style="margin-top: 1.5rem;">Don't have an account? <a href="#signup" class="text-link">Sign Up</a></p>
+            </section>
+            <div id="auth-message" class="auth-message"></div>
+        </main>
+    </div>
+
+    <!-- Category Selection Page -->
+    <div id="page-category-selection" class="page">
+        <a href="index.html" class="btn btn-home">Home</a>
+        <main class="container">
+            <h1 id="category-header">Select a Category</h1>
+            <section id="category-selection">
+                <div class="card" data-category="him"><h2>For Him</h2></div>
+                <div class="card" data-category="her"><h2>For Her</h2></div>
+                <div class="card" data-category="parents"><h2>For Parents</h2></div>
+                <div class="card" data-category="me"><h2>For Me</h2></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Question Page -->
+    <div id="page-question" class="page">
+        <a href="index.html" class="btn btn-home">Home</a>
+        <main class="container">
+            <section id="question-page-content">
+                <h1 id="question-header"></h1>
+                <p>Have you ever used any perfume in this category?</p>
+                <div class="button-group">
+                    <button id="yes-button" class="btn">Yes</button>
+                    <button id="no-button" class="btn">No</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Review Page -->
+    <div id="page-review" class="page">
+        <a href="index.html" class="btn btn-home">Home</a>
+        <main class="container">
+            <section id="review-page-content">
+                <h1 id="review-header"></h1>
+                <form id="review-form">
+                    <div class="form-group">
+                        <label for="photo">Upload Photo</label>
+                        <input type="file" id="photo" accept="image/*">
+                        <img id="photo-preview" class="photo-preview" src="" alt="Photo Preview">
+                    </div>
+                    <div class="form-group">
+                        <label>Rating</label>
+                        <div class="star-rating" id="star-rating" role="radiogroup">
+                            <span class="star" data-value="1" role="radio">★</span>
+                            <span class="star" data-value="2" role="radio">★</span>
+                            <span class="star" data-value="3" role="radio">★</span>
+                            <span class="star" data-value="4" role="radio">★</span>
+                            <span class="star" data-value="5" role="radio">★</span>
+                        </div>
+                        <span id="rating-number" style="margin-left: 10px; font-weight: bold; color: gold; font-size: 1.2rem; user-select:none;"></span>
+                    </div>
+                    <div class="form-group">
+                        <label for="title">Perfume Name / Title</label>
+                        <input type="text" id="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="comments">Comments</label>
+                        <textarea id="comments" rows="4" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="date-used">Date First Used</label>
+                        <input type="date" id="date-used" required>
+                    </div>
+                    <button type="submit" id="submit-review" class="btn" disabled>Submit Review</button>
+                </form>
+            </section>
+        </main>
+    </div>
+
+    <!-- Main Page -->
+    <div id="page-main" class="page">
+        <a href="index.html" class="btn btn-home">Home</a>
+        <header class="page-header">
+            <h1 id="main-header"></h1>
+            <div class="filters">
+                <label for="sort-by">Sort By:</label>
+                <select id="sort-by">
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="highest-rating">Highest Rating</option>
+                    <option value="lowest-rating">Lowest Rating</option>
+                </select>
+            </div>
+        </header>
+        <main class="container">
+            <section id="reviews-grid"></section>
+        </main>
+    </div>
+
+    <!-- My Reviews Page -->
+    <div id="page-my-reviews" class="page">
+        <a href="index.html" class="btn btn-home">Home</a>
+        <header class="page-header">
+            <h1 id="my-reviews-header">My Reviews</h1>
+            <div class="filters">
+                <label for="sort-by-my-reviews">Sort By:</label>
+                <select id="sort-by-my-reviews">
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="highest-rating">Highest Rating</option>
+                    <option value="lowest-rating">Lowest Rating</option>
+                </select>
+            </div>
+        </header>
+        <main class="container">
+            <section id="my-reviews-grid"></section>
+        </main>
+    </div>
+
+    <!-- Thank You Modal -->
+    <div id="thank-you-modal" class="modal" role="dialog">
+        <div class="modal-content">
+            <h2 id="modal-title"></h2>
+            <p id="modal-message"></p>
+            <button id="close-modal" class="btn">Close</button>
+        </div>
+    </div>
+<!-- My Reviews Page -->
+<div id="page-my-reviews" class="page">
+    <a href="index.html" class="btn btn-home">Home</a>
+    <header class="page-header">
+        <h1 id="my-reviews-header">My Reviews</h1>
+            </header>
+    <main class="container">
+        <section id="my-reviews-grid"></section>
+    </main>
+</div>
+
+
+    <!-- Admin Page -->
+    <div id="page-admin" class="page">
+        <a href="index.html" class="btn btn-home">Home</a>
+        <header class="page-header">
+            <h1 id="admin-header">Admin Panel</h1>
+            <p>Approve or reject new reviews.</p>
+        </header>
+        <main class="container">
+            <section id="admin-reviews-grid"></section>
+        </main>
+    </div>
+
+    <noscript>
+        <p class="no-js-message">Please enable JavaScript to fully use this website.</p>
+    </noscript>
+    <script type="module" src="js/script.js"></script>
+</body>
+</html>
