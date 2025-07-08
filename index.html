@@ -188,6 +188,20 @@
                 hamburger.classList.remove('active');
             }
         });
+document.addEventListener('DOMContentLoaded', () => {
+        // Existing listeners
+        loadSponsoredPerfumes();
+        const contactForm = document.querySelector('.contact-form');
+        if (contactForm) {
+            contactForm.addEventListener('submit', submitContactForm);
+        }
+
+        // ✅ Add this to enable hamburger toggle
+        const hamburger = document.getElementById('hamburger');
+        if (hamburger) {
+            hamburger.addEventListener('click', toggleMenu);
+        }
+    });
     </script>
 <style>
 * {
