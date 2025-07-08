@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rate Your Perfume</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, query, where, addDoc } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDuM804L-1zEvcP8i0KiNYU2vXaLSbW3nc",
+            authDomain: "perfume-rating.firebaseapp.com",
+            projectId: "perfume-rating",
+            storageBucket: "perfume-rating.appspot.com",
+            messagingSenderId: "1037621518138",
+            appId: "1:1037621518138:web:13302a5e55930a46c6ba03",
+            measurementId: "G-3NCT4SYQ8Q"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        async function loadSponsoredPerfumes() {
+            const perfumeGrid = document.querySelector('.perfume-grid');
+            perfumeGrid.innerHTML = '<p style="text-align: center; color: #f7d468;">Loading sponsored perfumes...</p>';
+            try {
+                const sponsoredRef = collection(db, 'sponsored-perfumes');
+                const sponsoredQuery = query(sponsoredRef, where('isSponsored', '==', true));
+                const sponsoredSnapshot = await getDocs(sponsoredQuery);
+                const sponsoredPerfumes = sponsoredSnapshot.docs.map(doc => ({
+                    normTitle: doc.id,
+                    ...doc.data()
+                }));
+
+                if (sponsoredPerfumes.length === 0) {
+                    perfumeGrid.innerHTML = '<p style="text-align: center; color: #f7d468;">No sponsored perfumes available.</p>';
+                    return;
+                }
+
+                perfumeGrid.innerHTML = '';
+                const categories = ['him', 'her', 'parents', 'me'];
+                for (const perfume of sponsoredPerfumes) {
+                    let reviews = [];
+                    let photo = perfume.photo || '';
+                    for (const category of categories) {
+                        const reviewsRef = collection(db, 'reviews', category, 'items');
+                        const q = query(reviewsRef, where('title', '==', perfume.originalTitle), where('status', '==', 'approved'));
+                        const querySnapshot = await getDocs(q);
+                        reviews.push(...querySnapshot.docs.map(doc => doc.data()));
+                        if (!photo) {
+                            const reviewWithPhoto = querySnapshot.docs.find(doc => doc.data().photo);
+                            if (reviewWithPhoto) photo = reviewWithPhoto.data().photo;
+                        }
+                    }
+
+                    const avgRating = reviews.length > 0
+                        ? (reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1)
+                        : 0;
+                    const reviewCount = reviews.length;
+                    const starsHTML = Array.from({ length: 5 }, (_, i) =>
+                        `<i class="fas fa-star star ${i < Math.round(avgRating) ? '' : 'empty'}"></i>`
+                    ).join('');
+
+                    const card = document.createElement('div');
+                    card.className = 'perfume-card';
+                    card.innerHTML = `
+                        <div class="perfume-image">
+                            <img src="${photo || 'https://via.placeholder.com/400x200?text=No+Image'}" alt="${perfume.originalTitle}">
+                            <i class="fas fa-heart heart-icon"></i>
+                        </div>
+                        <h3 class="perfume-name">${perfume.originalTitle}</h3>
+                        <p class="perfume-brand">${perfume.category.charAt(0).toUpperCase() + perfume.category.slice(1)}</p>
+                        <div class="rating-container">
+                            <div class="stars">${starsHTML}</div>
+                            <span class="review-count">(${reviewCount} reviews)</span>
+                        </div>
+                        <div class="perfume-notes">
+                            <span class="note-tag">Generic</span>
+                        </div>
+                        <div class="perfume-footer">
+                            <span class="perfume-price">$100</span>
+                            <button class="view-button" onclick="location.href='discovery.html#review?category=${perfume.category}'">Give Review</button>
+                        </div>
+                    `;
+                    perfumeGrid.appendChild(card);
+                }
+            } catch (error) {
+                console.error('Error loading sponsored perfumes:', error);
+                perfumeGrid.innerHTML = '<p style="text-align: center; color: #ff6b6b;">Error loading sponsored perfumes.</p>';
+            }
+        }
+
+        function formatDateOrDaysAgo(timestamp) {
+            if (!timestamp) return '';
+            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            if (diffDays < 1) return " 키키키Today";
+            if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+            return date.toLocaleDateString('en-GB');
+        }
+
+        async function submitContactForm(e) {
+            e.preventDefault();
+            const form = e.target;
+            const messageDiv = document.getElementById('contact-message');
+            const firstName = form.querySelector('input[placeholder="Your first name"]').value.trim();
+            const lastName = form.querySelector('input[placeholder="Your last name"]').value.trim();
+            const email = form.querySelector('input[placeholder="your.email@example.com"]').value.trim();
+            const subject = form.querySelector('input[placeholder="Message subject"]').value.trim();
+            const message = form.querySelector('textarea[placeholder="Write your message here..."]').value.trim();
+
+            if (!firstName || !lastName || !email || !subject || !message) {
+                messageDiv.textContent = 'Please fill out all fields.';
+                messageDiv.style.color = '#ff6b6b';
+                return;
+            }
+
+            try {
+                await addDoc(collection(db, 'contact-messages'), {
+                    firstName,
+                    lastName,
+                    email,
+                    subject,
+                    message,
+                    timestamp: new Date(),
+                    status: 'unread'
+                });
+                messageDiv.textContent = 'Message sent successfully!';
+                messageDiv.style.color = '#D4AF37';
+                form.reset();
+            } catch (error) {
+                console.error('Error submitting contact form:', error);
+                messageDiv.textContent = 'Error sending message. Please try again.';
+                messageDiv.style.color = '#ff6b6b';
+            }
+        }
+
+        function submitNewsletterForm(e) {
+            e.preventDefault();
+            const form = e.target;
+            const messageDiv = document.getElementById('newsletter-message');
+            const formData = new FormData(form);
+            fetch(form.action, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: formData
+            }).then(() => {
+                messageDiv.textContent = 'Thank you for subscribing!';
+                form.reset();
+            }).catch(() => {
+                messageDiv.textContent = 'Thank you for subscribing!';
+                form.reset();
+            });
+            return false;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSponsoredPerfumes();
+            const contactForm = document.querySelector('.contact-form');
+            if (contactForm) {
+                contactForm.addEventListener('submit', submitContactForm);
+            }
+        });
+
+        function toggleMenu() {
+            const navMenu = document.getElementById('nav-menu');
+            const hamburger = document.getElementById('hamburger');
+            navMenu.classList.toggle('active');
+            hamburger.classList.toggle('active');
+        }
+
+        function closeMenu() {
+            const navMenu = document.getElementById('nav-menu');
+            const hamburger = document.getElementById('hamburger');
+            navMenu.classList.remove('active');
+            hamburger.classList.remove('active');
+        }
+
+        document.addEventListener('click', function(event) {
+            const navMenu = document.getElementById('nav-menu');
+            const hamburger = document.getElementById('hamburger');
+            const navbar = document.querySelector('.navbar');
+            if (!navbar.contains(event.target)) {
+                navMenu.classList.remove('active');
+                hamburger.classList.remove('active');
+            }
+        });
+    </script>
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    line-height: 1.6;
+    color: #f7d468;
+    background-color: #121212;
+}
+
+/* Navigation */
+.navbar {
+    background: linear-gradient(135deg, rgba(18,18,18,0.7), rgba(18,18,18,0.7));
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+}
+
+.nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 70px;
+}
+
+.nav-brand {
+    font-size: 28px;
+    font-weight: bold;
+    color: #D4AF37;
+}
+
+.brand-scent {
+    color: #f7d468;
+}
+
+.brand-haven {
+    color: white;
+}
+
+.hamburger {
+    display: none;
+    flex-direction: column;
+    cursor: pointer;
+    z-index: 1001;
+    padding: 4px;
+    transition: transform 0.3s ease;
+}
+
+.hamburger span {
+    width: 25px;
+    height: 3px;
+    background-color: #f7d468;
+    margin: 3px 0;
+    transition: 0.3s;
+    border-radius: 3px;
+}
+
+.hamburger.active span:nth-child(1) {
+    transform: rotate(-45deg) translate(-5px, 6px);
+}
+
+.hamburger.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger.active span:nth-child(3) {
+    transform: rotate(45deg) translate(-5px, -6px);
+}
+
+.nav-menu {
+    display: flex;
+    gap: 30px;
+    align-items: center;
+}
+
+.nav-link {
+    color: #f7d468;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+    padding: 10px 15px;
+}
+
+.nav-link:hover {
+    color: #D4AF37;
+}
+
+.signin-btn {
+    background: linear-gradient(45deg, #D4AF37, #f7d468);
+    border-radius: 25px;
+    padding: 10px 20px !important;
+    font-weight: bold;
+    color: #121212;
+    transition: all 0.3s ease;
+}
+
+.signin-btn:hover {
+    background: linear-gradient(45deg, #f7d468, #D4AF37);
+    transform: translateY(-1px);
+    color: #121212;
+}
+
+/* Hero Section */
+.hero {
+    background: linear-gradient(135deg, rgba(18,18,18,0.9), rgba(18,18,18,0.9));
+    padding: 120px 20px 80px;
+    text-align: center;
+    color: #f7d468;
+}
+
+.hero-container {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.hero-title {
+    font-size: 4rem;
+    font-weight: bold;
+    margin-bottom: 20px;
+    line-height: 1.2;
+    color: #D4AF37;
+}
+
+.hero-highlight {
+    display: block;
+    background: linear-gradient(45deg, #f7d468, #D4AF37);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.hero-description {
+    font-size: 1.2rem;
+    margin-bottom: 40px;
+    opacity: 0.9;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    color: #f7d468;
+}
+
+.hero-search {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.search-container {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+}
+
+.search-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #bfae57;
+}
+
+.search-input {
+    width: 100%;
+    padding: 15px 15px 15px 45px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(5px);
+    color: #f7d468;
+}
+
+.search-input::placeholder {
+    color: #bfae57;
+}
+
+.cta-button {
+    background: linear-gradient(45deg, #D4AF37, #f7d468);
+    color: #121212;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.cta-button:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(45deg, #f7d468, #D4AF37);
+}
+
+/* Sections */
+.section-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 80px 20px;
+}
+
+.section-title {
+    font-size: 2.5rem;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 50px;
+    color: #D4AF37;
+}
+
+/* Collection Section */
+.collection {
+    background-color: #121212;
+}
+
+.perfume-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 30px;
+}
+
+.perfume-card {
+    background: #1a1a1a;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 10px 30px rgba(212, 175, 55, 0.2);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.perfume-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(212, 175, 55, 0.4);
+    border-color: #D4AF37;
+}
+
+.perfume-image {
+    position: relative;
+    margin-bottom: 20px;
+    overflow: hidden;
+    border-radius: 10px;
+}
+
+.perfume-image img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.perfume-card:hover .perfume-image img {
+    transform: scale(1.1);
+}
+
+.heart-icon {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    color: #f7d468;
+    font-size: 20px;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.heart-icon:hover {
+    color: #ef4444;
+}
+
+.perfume-name {
+    font-size: 1.3rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #D4AF37;
+}
+
+.perfume-brand {
+    color: #bfae57;
+    margin-bottom: 15px;
+}
+
+.rating-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+
+.stars {
+    display: flex;
+    gap: 2px;
+}
+
+.star {
+    color: #f7d468;
+    font-size: 16px;
+}
+
+.star.empty {
+    color: #4a4a4a;
+}
+
+.review-count {
+    color: #bfae57;
+    font-size: 14px;
+}
+
+.perfume-notes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 20px;
+}
+
+.note-tag {
+    background-color: #3a2e07;
+    color: #f7d468;
+    padding: 4px 8px;
+    border-radius: 15px;
+    font-size: 12px;
+}
+
+.perfume-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.perfume-price {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #D4AF37;
+}
+
+.view-button {
+    background: linear-gradient(45deg, #f7d468, #D4AF37);
+    color: #121212;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.view-button:hover {
+    background: linear-gradient(45deg, #D4AF37, #f7d468);
+}
+
+/* Reviews Section */
+.reviews {
+    background-color: #121212;
+}
+
+.reviews-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    margin-bottom: 50px;
+}
+
+.review-card {
+    background: #1a1a1a;
+    border-radius: 15px;
+    padding: 25px;
+    border: 2px solid #3a2e07;
+}
+
+.review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.reviewer-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.reviewer-avatar {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(45deg, #f7d468, #D4AF37);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #121212;
+    font-weight: bold;
+}
+
+.reviewer-name {
+    font-weight: bold;
+    color: #D4AF37;
+}
+
+.review-date {
+    color: #bfae57;
+    font-size: 14px;
+}
+
+.reviewed-perfume {
+    color: #f7d468;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.review-text {
+    color: #bfae57;
+    line-height: 1.6;
+}
+
+/* Review Form */
+.review-form-container {
+    background: #1a1a1a;
+    border-radius: 15px;
+    padding: 40px;
+    border: 2px solid #3a2e07;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.form-title {
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin-bottom: 30px;
+    color: #D4AF37;
+    text-align: center;
+}
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #f7d468;
+}
+
+.form-input, .form-textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #3a2e07;
+    border-radius: 8px;
+    font-size: 16px;
+    background: #121212;
+    color: #f7d468;
+    transition: border-color 0.3s ease;
+}
+
+.form-input:focus, .form-textarea:focus {
+    outline: none;
+    border-color: #D4AF37;
+}
+
+.star-rating {
+    display: flex;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+.star-rating i {
+    font-size: 24px;
+    color: #4a4a4a;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.star-rating i:hover {
+    color: #f7d468;
+}
+
+.submit-button {
+    width: 100%;
+    background: linear-gradient(45deg, #D4AF37, #f7d468);
+    color: #121212;
+    border: none;
+    padding: 15px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.submit-button:hover {
+    background: linear-gradient(45deg, #f7d468, #D4AF37);
+}
+
+/* Contact Section */
+.contact {
+    background-color: #121212;
+}
+
+.contact-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 50px;
+    align-items: start;
+}
+
+.contact-subtitle {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 30px;
+    color: #D4AF37;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.contact-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(45deg, #f7d468, #D4AF37);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #121212;
+    font-size: 20px;
+}
+
+.contact-label {
+    font-weight: bold;
+    color: #D4AF37;
+}
+
+.contact-value {
+    color: #bfae57;
+}
+
+.contact-form-container {
+    background: #1a1a1a;
+    border-radius: 15px;
+    padding: 40px;
+    box-shadow: 0 10px 30px rgba(212, 175, 55, 0.2);
+    color: #f7d468;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+/* Footer */
+.footer {
+    background: linear-gradient(135deg, rgba(18,18,18,0.9), rgba(18,18,18,0.9));
+    color: #f7d468;
+    padding: 60px 20px 20px;
+}
+
+.footer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.footer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 40px;
+    margin-bottom: 40px;
+}
+
+.footer-brand {
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: #D4AF37;
+}
+
+.footer-description {
+    opacity: 0.8;
+    line-height: 1.6;
+    color: #f7d468;
+}
+
+.footer-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #D4AF37;
+}
+
+.footer-links {
+    list-style: none;
+}
+
+.footer-links li {
+    margin-bottom: 10px;
+}
+
+.footer-links a {
+    color: #f7d468;
+    text-decoration: none;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+.footer-links a:hover {
+    opacity: 1;
+    color: #D4AF37;
+}
+
+.footer-newsletter-text {
+    opacity: 0.8;
+    margin-bottom: 15px;
+    color: #f7d468;
+}
+
+.newsletter-form {
+    display: flex;
+    gap: 0;
+}
+
+.newsletter-input {
+    flex: 1;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px 0 0 5px;
+    font-size: 14px;
+    background: #121212;
+    color: #f7d468;
+}
+
+.newsletter-input::placeholder {
+    color: #bfae57;
+}
+
+.newsletter-button {
+    background: linear-gradient(45deg, #D4AF37, #f7d468);
+    color: #121212;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 0 5px 5px 0;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.newsletter-button:hover {
+    background: linear-gradient(45deg, #f7d468, #D4AF37);
+}
+
+.footer-bottom {
+    border-top: 1px solid rgba(212, 175, 55, 0.2);
+    padding-top: 20px;
+    text-align: center;
+    opacity: 0.8;
+}
+
+/* Smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Mobile Responsive Design */
+@media (max-width: 768px) {
+    .hamburger {
+        display: flex;
+    }
+    
+    .nav-menu {
+        position: fixed;
+        top: 70px;
+        left: -100%;
+        width: 100%;
+        height: calc(100vh - 70px);
+        background: linear-gradient(135deg, rgba(18,18,18,0.9), rgba(18,18,18,0.9));
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: center;
+        transition: left 0.3s ease;
+        padding-top: 50px;
+        gap: 20px;
+        overflow-y: auto;
+    }
+    
+    .nav-menu.active {
+        left: 0;
+    }
+    
+    .nav-link {
+        font-size: 18px;
+        padding: 15px 30px;
+        width: 80%;
+        text-align: center;
+        border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+        display: block;
+        color: #f7d468;
+    }
+    
+    .signin-btn {
+        margin-top: 20px;
+        border-radius: 25px;
+        border: 2px solid #D4AF37;
+        width: auto !important;
+        padding: 12px 25px !important;
+        color: #121212;
+        background: linear-gradient(45deg, #D4AF37, #f7d468);
+    }
+    
+    .hero-title {
+        font-size: 2.5rem;
+    }
+    
+    .hero-search {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .search-container {
+        max-width: 100%;
+    }
+    
+    .contact-grid {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .perfume-grid,
+    .reviews-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+    
+    .section-container {
+        padding: 60px 15px;
+    }
+    
+    .footer-grid {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+    
+    .newsletter-form {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .newsletter-input {
+        border-radius: 5px;
+    }
+    
+    .newsletter-button {
+        border-radius: 5px;
+    }
+}
+
+@media (max-width: 480px) {
+    .section-container {
+        padding: 50px 10px;
+    }
+    
+    .hero {
+        padding: 100px 15px 60px;
+    }
+    
+    .perfume-grid,
+    .reviews-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .nav-brand {
+        font-size: 24px;
+    }
+    
+    .hero-title {
+        font-size: 2rem;
+        line-height: 1.1;
+    }
+    
+    .hero-description {
+        font-size: 1rem;
+    }
+    
+    .section-title {
+        font-size: 2rem;
+    }
+    
+    .review-form-container,
+    .contact-form-container {
+        padding: 25px 20px;
+    }
+    
+    .perfume-card {
+        padding: 20px;
+    }
+    
+    .review-card {
+        padding: 20px;
+    }
+    
+    .nav-link {
+        font-size: 16px;
+        padding: 12px 20px;
+    }
+    
+    .search-input {
+        font-size: 14px;
+        padding: 12px 12px 12px 40px;
+    }
+    
+    .cta-button {
+        padding: 12px 25px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 320px) {
+    .nav-brand {
+        font-size: 20px;
+    }
+    
+    .hero-title {
+        font-size: 1.8rem;
+    }
+    
+    .section-title {
+        font-size: 1.8rem;
+    }
+    
+    .perfume-card,
+    .review-card {
+        padding: 15px;
+    }
+    
+    .review-form-container,
+    .contact-form-container {
+        padding: 20px 15px;
+    }
+}
+</style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="#home" style="text-decoration: none; color: inherit;">
+                    <span class="brand-scent">Rate Your</span>
+                    <span class="brand-haven">Perfume</span>
+                </a>
+            </div>
+            <div class="hamburger" id="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div class="nav-menu" id="nav-menu">
+                <a href="#home" class="nav-link">Home</a>
+                <a href="#collection" class="nav-link">Collection</a>
+                <a href="#reviews" class="nav-link">Reviews</a>
+                <a href="#contact" class="nav-link">Contact</a>
+                <a href="discovery.html#auth" class="nav-link signin-btn">Sign In</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-container">
+            <h1 class="hero-title">
+                Find Your
+                <span class="hero-highlight">Perfect Perfume</span>
+            </h1>
+            <p class="hero-description">
+                Explore authentic reviews, discover new scents, and find the perfect fragrance that matches your personality and style.
+            </p>
+            <div class="hero-search">
+                <button class="cta-button" onclick="location.href='discovery.html#auth'">Explore Collection</button>
+            </div>
+        </div>
+        <div id="auth" class="page"></div>
+    </section>
+
+    <!-- Collection Section -->
+    <section id="collection" class="collection">
+        <div class="section-container">
+            <h2 class="section-title">Featured Collection</h2>
+            <div class="perfume-grid">
+                <!-- Dynamically populated by JavaScript -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Reviews Section -->
+    <section id="reviews" class="reviews">
+        <div class="section-container">
+            <h2 class="section-title">Customer Reviews</h2>
+            <div class="reviews-grid">
+                <div class="review-card">
+                    <div class="review-header">
+                        <div class="reviewer-info">
+                            <div class="reviewer-avatar">S</div>
+                            <div>
+                                <div class="reviewer-name">Sarah Johnson</div>
+                                <div class="review-date">2 days ago</div>
+                            </div>
+                        </div>
+                        <div class="stars">
+                            <i class="fas fa-star star"></i>
+                            <i class="fas fa-star star"></i>
+                            <i class="fas fa-star star"></i>
+                            <i class="fas fa-star star"></i>
+                            <i class="fas fa-star star"></i>
+                        </div>
+                    </div>
+                    <div class="reviewed-perfume">Chanel No. 5</div>
+                    <p class="review-text">
+                        "Absolutely love this fragrance! It's timeless and elegant. The longevity is incredible and I get compliments every time I wear it."
+                    </p>
+                </div>
+                <div class="review-card">
+                    <div class="review-header">
+                        <div class="reviewer-info">
+                            <div class="reviewer-avatar">M</div>
+                            <div>
+                                <div class="reviewer-name">Michael Chen</div>
+                                <div class="review-date">1 week ago</div>
+                            </div>
+                        </div>
+                        <div class="stars">
+                            <i class="fas fa-star star"></i>
+                            <i class="fas fa-star star"></i>
+                            <i class="fas fa-star star"></i>
+                            <i class="fas fa-star star"></i>
+                            <i class="fas fa-star star empty"></i>
+                        </div>
+                    </div>
+                    <div class="reviewed-perfume">Dior Sauvage</div>
+                    <p class="review-text">
+                        "Great masculine scent with excellent projection. Perfect for daily wear and special occasions. Highly recommend!"
+                    </p>
+                </div>
+                <div class="review-card">
+                    <div class="review-header">
+                        <div class="reviewer-info">
+                            <div class="reviewer-avatar">E</div>
+                            <div>
+                                <div class="reviewer-name">Emma Wilson</div>
+                                <div class="review-date">2 weeks ago</div>
+                            </div>
+                        </div>
+                        <div class="stars">
+                            <i class="fas fa-star star"></i>
+                            <i class="fas fa-star star"></i>
+                            <i class="fas fa-star star"></i>
+                            <i class="fas fa-star star"></i>
+                            <i class="fas fa-star star"></i>
+                        </div>
+                    </div>
+                    <div class="reviewed-perfume">Tom Ford Black Orchid</div>
+                    <p class="review-text">
+                        "Luxurious and sophisticated. The vanilla and floral notes blend beautifully. It's become my signature scent!"
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="contact">
+        <div class="section-container">
+            <h2 class="section-title">Contact Us</h2>
+            <div class="contact-grid">
+                <div class="contact-info">
+                    <h3 class="contact-subtitle">Get in Touch</h3>
+                    <div class="contact-item">
+                        <a href="mailto:pr@rateyourperfume.com" style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                            <div class="contact-icon">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div>
+                                <div class="contact-label">Email</div>
+                                <div class="contact-value">pr@rateyourperfume.com</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                <div class="contact-form-container">
+                    <h3 class="contact-subtitle">Send us a Message</h3>
+                    <form class="contact-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">First Name</label>
+                                <input type="text" class="form-input" placeholder="Your first name">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Last Name</label>
+                                <input type="text" class="form-input" placeholder="Your last name">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-input" placeholder="your.email@example.com">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Subject</label>
+                            <input type="text" class="form-input" placeholder="Message subject">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Message</label>
+                            <textarea class="form-textarea" rows="5" placeholder="Write your message here..."></textarea>
+                        </div>
+                        <button type="submit" class="submit-button">Send Message</button>
+                    </form>
+                    <div id="contact-message" style="margin-top: 10px; font-weight: 600;"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-grid">
+                <div class="footer-column">
+                    <div class="footer-brand">
+                        <span class="brand-scent">Rate Your</span>
+                        <span class="brand-haven">Perfume</span>
+                    </div>
+                    <p class="footer-description">
+                        Your trusted source for authentic perfume reviews and fragrance discovery. 
+                        Find your perfect scent with our expert recommendations.
+                    </p>
+                </div>
+                <div class="footer-column">
+                    <h4 class="footer-title">Newsletter</h4>
+                    <p class="footer-newsletter-text">Subscribe to get the latest fragrance reviews and recommendations.</p>
+                    <form id="newsletter-form" class="newsletter-form" action="https://docs.google.com/forms/d/e/1FAIpQLSezJbIHNLlqdpEUmtJ3_uVDh5hHNrQkbqgpjqmis07-DcpVww/formResponse" method="POST" target="hidden_iframe" onsubmit="return submitNewsletterForm(event)">
+                        <input type="email" name="entry.1079342120" class="newsletter-input" placeholder="Your email" required>
+                        <button type="submit" class="newsletter-button">Subscribe</button>
+                    </form>
+                    <div id="newsletter-message" style="margin-top: 10px; color: green; font-weight: 600;"></div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>© 2025 Rate Your Perfume. All rights reserved.</p>
+            </div>
+        </div>
+        <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
+    </footer>
+</body>
+</html>
