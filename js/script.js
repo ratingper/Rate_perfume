@@ -37,19 +37,48 @@ const ADMIN_UID = 'WJD0saAt2gWbFavVuAMAQHxqpxX2';
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- STATE & UI ELEMENTS ---
-    const state = { user: null, category: null, rating: 0, selectedPerfume: null };
+    const state = { user: null, category: null, rating: 0, selectedPerfume: null, justSignedUp: false };
     const userInfoDiv = document.getElementById('user-info');
     const verificationNotice = document.getElementById('email-verification-notice');
     const adminLinkContainer = document.getElementById('admin-link-container');
 
+    // --- DYNAMIC MESSAGE FUNCTIONS ---
+    function updateCategoryMessage() {
+        let message;
+        if (state.user) {
+            const isEmailUser = auth.currentUser.providerData.some(p => p.providerId === 'password');
+            if (isEmailUser && !state.user.emailVerified) {
+                message = 'Your account has been created, please verify your email to proceed';
+                showMessage('#category-selection', message, false, 4000, () => {
+                    signOut(auth)
+                        .then(() => {
+                            window.location.hash = '#login';
+                            showMessage('#login', 'You have been signed out. Please verify your email to continue.', false, 4000);
+                        })
+                        .catch((error) => {
+                            handleAuthError(error);
+                        });
+                });
+            } else {
+                const displayName = state.user.name ? state.user.name.split(' ')[0] : state.user.email.split('@')[0];
+                message = `Welcome back ${displayName}`;
+                showMessage('#category-selection', message, false, 1000);
+            }
+        } else {
+            message = 'Welcome, Guest! Choose a category to explore.';
+            showMessage('#category-selection', message, false, 1000);
+        }
+    }
+
     // --- MESSAGE DISPLAY FUNCTION ---
-    function showMessage(page, message, isError = false) {
+    function showMessage(page, message, isError = false, duration = 5000, callback = null) {
         const pageMap = {
             '#question': 'question-message',
-            '#review': 'review-message',
+            '#review': 'review-message-placeholder',
             '#main': 'main-message',
             '#admin': 'admin-message',
-            '#my-reviews': 'my-reviews-message'
+            '#my-reviews': 'my-reviews-message',
+            '#category-selection': 'category-message-placeholder'
         };
         const messageDiv = document.getElementById(pageMap[page]);
         if (messageDiv) {
@@ -60,7 +89,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 messageDiv.style.display = 'none';
                 messageDiv.textContent = '';
                 messageDiv.className = '';
-            }, 5000);
+                if (callback && typeof callback === 'function') {
+                    callback();
+                }
+            }, duration);
         }
     }
 
@@ -76,10 +108,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 emailVerified: user.emailVerified
             };
             updateUserInfoUI();
-
+            updateCategoryMessage();
             const currentHash = window.location.hash.split('?')[0];
             if (state.user.id === ADMIN_UID) {
-                adminLinkContainer.innerHTML = `<a href="#admin" class="text-link">Admin Panel</a>`;
+                adminLinkContainer.innerHTML = `<a href="#admin" class="text-link"></a>`;
                 if (window.location.hash !== '#admin' && window.location.hash !== '') {
                     window.location.hash = '#admin';
                 }
@@ -88,7 +120,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else {
             state.user = null;
+            state.justSignedUp = false; // Reset signup flag on sign-out
             updateUserInfoUI();
+            updateCategoryMessage();
             const protectedHashes = ['#review', '#admin', '#category-selection', '#question', '#my-reviews'];
             if (protectedHashes.includes(window.location.hash.split('?')[0])) {
                 window.location.hash = '#login';
@@ -105,7 +139,11 @@ document.addEventListener('DOMContentLoaded', () => {
             userInfoDiv.innerHTML = `
                 ${userImage}
                 ${userName}
-                <a href="#my-reviews" class="text-link">My Reviews</a>
+<a href="#my-reviews" class="text-link" style="display: flex; flex-direction: column; align-items: center; text-decoration: none; margin: 5px 10px;">
+  <img src="https://www.shutterstock.com/image-vector/five-stars-rating-review-icon-260nw-1966181017.jpg" alt="Reviews Icon" style="width: 48px; height: 48px; object-fit: cover; border-radius: 6px;">
+  <span style="margin-top: 10px; font-size: 0.9rem; font-weight: 500; color: #444;">My Reviews</span>
+</a>
+
                 <button id="sign-out-btn" class="btn">Sign Out</button>`;
             document.getElementById('sign-out-btn').addEventListener('click', () => signOut(auth).then(() => { window.location.href = 'index.html'; }));
             
@@ -123,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (authPages.includes(currentHash)) {
             alert(message);
         } else {
-            showMessage(currentHash, message, true);
+            showMessage(currentHash, message, true, 2000);
         }
     }
 
@@ -137,7 +175,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             await updateProfile(userCredential.user, { displayName: name });
             await sendEmailVerification(userCredential.user);
-            alert("Account created! Please check your email to verify your account.");
+            state.justSignedUp = true; // Set flag for signup message
+            window.location.hash = '#category-selection'; // Redirect to trigger message
         } catch (error) {
             handleAuthError(error);
         }
@@ -150,7 +189,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const googleSignupBtn = document.getElementById('google-signup-btn');
     if (googleSignupBtn) {
         googleSignupBtn.addEventListener('click', () => {
-            signInWithPopup(auth, new GoogleAuthProvider()).catch(handleAuthError);
+            signInWithPopup(auth, new GoogleAuthProvider()).then(() => {
+                state.justSignedUp = true; // Set flag for Google signup
+            }).catch(handleAuthError);
         });
     }
 
@@ -176,6 +217,9 @@ document.addEventListener('DOMContentLoaded', () => {
             window.scrollTo(0, 0);
             state.category = new URLSearchParams(hash.split('?')[1]).get('category');
             state.selectedPerfume = new URLSearchParams(hash.split('?')[1]).get('perfume');
+            if (cleanHash === '#category-selection') {
+                updateCategoryMessage();
+            }
             const initializers = { 
                 '#question': initQuestionPage, 
                 '#review': initReviewPage, 
@@ -264,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
             submitButton.disabled = !isFormValid;
             
             if (isFormValid) {
-                const messageDiv = document.getElementById('review-message');
+                const messageDiv = document.getElementById('review-message-placeholder');
                 if (messageDiv) {
                     messageDiv.style.display = 'none';
                     messageDiv.textContent = '';
@@ -312,7 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentDate.setHours(23, 59, 59, 999);
             if (dateInput.value && selectedDate > currentDate) {
                 dateInput.value = '';
-                showMessage('#review', "Date First Used cannot be a future date.", true);
+                showMessage('#review', "Date First Used cannot be a future date.", true, 2000);
                 submitButton.disabled = true;
             }
             checkFormValidity();
@@ -321,18 +365,18 @@ document.addEventListener('DOMContentLoaded', () => {
         form.onsubmit = async (e) => {
             e.preventDefault();
             if (!state.user) {
-                showMessage('#review', "You must be logged in to submit.", true);
+                showMessage('#review', "You must be logged in to submit.", true, 2000);
                 return;
             }
             if (auth.currentUser.providerData.some(p => p.providerId === 'password') && !auth.currentUser.emailVerified) {
-                showMessage('#review', "Please verify your email before submitting a review.", true);
+                showMessage('#review', "Please verify your email before submitting a review.", true, 2000);
                 return;
             }
             const selectedDate = new Date(dateInput.value);
             const currentDate = new Date();
             currentDate.setHours(23, 59, 59, 999);
             if (selectedDate > currentDate) {
-                showMessage('#review', "Date First Used cannot be a future date.", true);
+                showMessage('#review', "Date First Used cannot be a future date.", true, 2000);
                 return;
             }
 
@@ -373,12 +417,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     status: 'pending'
                 };
                 await addDoc(collection(db, 'reviews', state.category, 'items'), reviewData);
-                showMessage('#review', "Your review has been submitted for approval.", false);
+                showMessage('#review', "Your review is submitted and is under approval", false, 1000);
                 setTimeout(() => {
                     window.location.hash = '#main?category=' + encodeURIComponent(state.category || '');
-                }, 100);
+                }, 1000);
             } catch (error) {
-                showMessage('#review', `Error: ${error.message.replace('Firebase: ', '')}`, true);
+                showMessage('#review', `Error: ${error.message.replace('Firebase: ', '')}`, true, 1000);
             } finally {
                 submitButton.disabled = false;
                 submitButton.textContent = 'Submit Review';
@@ -412,7 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             } catch (error) {
                 console.warn("Failed to fetch product links:", error.message);
-                showMessage('#main', "Failed to fetch product links. Reviews loaded without links.", true);
+                showMessage('#main', "Failed to fetch product links. Reviews loaded without links.", true, 2000);
             }
 
             grid.innerHTML = '';
@@ -513,13 +557,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } catch (error) {
             console.error("Error fetching reviews:", error);
-            showMessage('#main', "Failed to load reviews. Please try again later.", true);
+            showMessage('#main', "Failed to load reviews. Please try again later.", true, 2000);
         }
     }
     
     async function renderMyReviews() {
         if (!state.user) {
-            showMessage('#my-reviews', "You must be logged in to view your reviews.", true);
+            showMessage('#my-reviews', "You must be logged in to view your reviews.", true, 2000);
             window.location.hash = '#login';
             return;
         }
@@ -553,7 +597,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             } catch (error) {
                 console.warn('Failed to fetch product links:', error.message);
-                showMessage('#my-reviews', 'Failed to fetch product links. Reviews loaded without links.', true);
+                showMessage('#my-reviews', 'Failed to fetch product links. Reviews loaded without links.', true, 2000);
             }
 
             grid.innerHTML = '';
@@ -587,13 +631,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } catch (error) {
             console.error('Error fetching your reviews:', error);
-            showMessage('#my-reviews', 'Failed to load your reviews. Please try again later.', true);
+            showMessage('#my-reviews', 'Failed to load your reviews. Please try again later.', true, 2000);
         }
     }
     
     async function initAdminPage() {
         if (state.user?.id !== ADMIN_UID) {
-            showMessage('#admin', "Access denied.", true);
+            showMessage('#admin', "Access denied.", true, 2000);
             window.location.hash = "#login";
             return;
         }
@@ -615,7 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             } catch (error) {
                 console.warn("Failed to fetch product links:", error.message);
-                showMessage('#admin', "Failed to fetch product links.", true);
+                showMessage('#admin', "Failed to fetch product links.", true, 2000);
             }
 
             try {
@@ -626,7 +670,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             } catch (error) {
                 console.warn("Failed to fetch sponsored perfumes:", error.message);
-                showMessage('#admin', "Failed to fetch sponsored perfumes.", true);
+                showMessage('#admin', "Failed to fetch sponsored perfumes.", true, 2000);
             }
 
             try {
@@ -636,7 +680,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 messagesSnapshot.forEach(doc => allContactMessages.push({ id: doc.id, ...doc.data() }));
             } catch (error) {
                 console.warn("Failed to fetch contact messages:", error.message);
-                showMessage('#admin', "Failed to fetch contact messages.", true);
+                showMessage('#admin', "Failed to fetch contact messages.", true, 2000);
             }
 
             for (const category of categories) {
@@ -651,9 +695,10 @@ document.addEventListener('DOMContentLoaded', () => {
             grid.innerHTML = '';
 
             if (allPendingReviews.length === 0) {
+                grid.innerHTML += '<h2 id="pending-reviews" style="text-align:center; color: var(--accent-gold); margin: 2rem 0 1rem 0; display: block; width: 100%;">Pending Reviews</h2>';
                 grid.innerHTML += '<p style="text-align:center; font-weight:bold; margin-top: 2rem;">No pending reviews to moderate.</p>';
             } else {
-                grid.innerHTML += '<h2 style="text-align:center; color: var(--accent-gold); margin: 2rem 0 1rem 0; display: block; width: 100%;">Pending Reviews</h2>';
+                grid.innerHTML += '<h2 id="pending-reviews" style="text-align:center; color: var(--accent-gold); margin: 2rem 0 1rem 0; display: block; width: 100%;">Pending Reviews</h2>';
                 allPendingReviews.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
                 allPendingReviews.forEach(review => {
                     const card = document.createElement('div');
@@ -677,9 +722,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (allApprovedReviews.length === 0) {
+                grid.innerHTML += '<h2 id="approved-reviews" style="text-align:center; color: var(--accent-gold); margin: 2rem 0 1rem 0; display: block; width: 100%;">Approved Reviews</h2>';
                 grid.innerHTML += '<p style="text-align:center; font-weight:bold; margin-top: 2rem;">No approved reviews.</p>';
             } else {
-                grid.innerHTML += '<h2 style="text-align:center; color: var(--accent-gold); margin: 2rem 0 1rem 0; display: block; width: 100%;">Approved Reviews</h2>';
+                grid.innerHTML += '<h2 id="approved-reviews" style="text-align:center; color: var(--accent-gold); margin: 2rem 0 1rem 0; display: block; width: 100%;">Approved Reviews</h2>';
                 const approvedPerfumeMap = new Map();
                 allApprovedReviews.forEach(review => {
                     const normTitle = review.title?.toLowerCase().trim();
@@ -738,7 +784,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            grid.innerHTML += '<h2 style="text-align:center; color: var(--accent-gold); margin: 2rem 0 1rem 0; display: block; width: 100%;">Sponsored Perfumes</h2>';
+            grid.innerHTML += '<h2 id="sponsored-perfumes" style="text-align:center; color: var(--accent-gold); margin: 2rem 0 1rem 0; display: block; width: 100%;">Sponsored Perfumes</h2>';
             if (perfumeMap.size === 0) {
                 grid.innerHTML += '<p style="text-align:center; font-weight:bold;">No perfumes available.</p>';
             } else {
@@ -763,7 +809,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
-            grid.innerHTML += '<h2 style="text-align:center; color: var(--accent-gold); margin: 2rem 0 1rem 0; display: block; width: 100%;">Contact Messages</h2>';
+            grid.innerHTML += '<h2 id="contact-messages" style="text-align:center; color: var(--accent-gold); margin: 2rem 0 1rem 0; display: block; width: 100%;">Contact Messages</h2>';
             if (allContactMessages.length === 0) {
                 grid.innerHTML += '<p style="text-align:center; font-weight:bold; margin-top: 2rem;">No contact messages received.</p>';
             } else {
@@ -803,9 +849,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     grid.appendChild(card);
                 });
             }
+
+            // Add event listeners for admin navigation links
+            document.querySelectorAll('.admin-nav .nav-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const sectionId = link.getAttribute('data-section');
+                    const section = document.getElementById(sectionId);
+                    if (section) {
+                        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
+            });
         } catch (error) {
             console.error("Error fetching data:", error);
-            showMessage('#admin', "Failed to load data. Please try again later.", true);
+            showMessage('#admin', "Failed to load data. Please try again later.", true, 2000);
         }
 
         grid.addEventListener('click', async (e) => {
@@ -823,18 +881,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (action === 'delete') {
                                 await deleteDoc(messageDocRef);
                                 target.closest('.review-card').remove();
-                                showMessage('#admin', "Message deleted successfully.", false);
+                                showMessage('#admin', "Message deleted successfully.", false, 2000);
                             } else {
                                 const currentStatus = target.dataset.status;
                                 const newStatus = currentStatus === 'unread' ? 'read' : 'unread';
                                 await updateDoc(messageDocRef, { status: newStatus });
                                 target.closest('.review-card').style.opacity = '0.5';
                                 target.closest('.admin-actions').innerHTML = `<p style="text-align: right; font-weight: bold; color: ${newStatus === 'read' ? 'var(--accent-gold)' : '#aaa'}">${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}</p>`;
-                                showMessage('#admin', `Message marked as ${newStatus}.`, false);
+                                showMessage('#admin', `Message marked as ${newStatus}.`, false, 2000);
                             }
                         } catch (error) {
                             console.error("Error updating message:", error);
-                            showMessage('#admin', "Failed to update message. Try again.", true);
+                            showMessage('#admin', "Failed to update message. Try again.", true, 2000);
                             target.disabled = false;
                         }
                         return;
@@ -847,17 +905,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         await updateDoc(reviewDocRef, { status: 'deleted' });
                         target.closest('.review-card').style.opacity = '0.5';
                         target.closest('.admin-actions').innerHTML = `<p style="text-align: right; font-weight: bold; color: #aaa;">Deleted</p>`;
-                        showMessage('#admin', "Review deleted successfully.", false);
+                        showMessage('#admin', "Review deleted successfully.", false, 2000);
                     } else {
                         const newStatus = target.classList.contains('btn-approve') ? 'approved' : 'rejected';
                         await updateDoc(reviewDocRef, { status: newStatus });
                         target.closest('.review-card').style.opacity = '0.5';
                         target.closest('.admin-actions').innerHTML = `<p style="text-align: right; font-weight: bold; color: ${newStatus === 'approved' ? 'var(--accent-gold)' : '#aaa'}">${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}</p>`;
-                        showMessage('#admin', `Review ${newStatus} successfully.`, false);
+                        showMessage('#admin', `Review ${newStatus} successfully.`, false, 2000);
                     }
                 } catch (error) {
                     console.error("Error updating review status:", error);
-                    showMessage('#admin', "Failed to update review status. Try again.", true);
+                    showMessage('#admin', "Failed to update review status. Try again.", true, 2000);
                     target.disabled = false;
                 }
             } else if (target.matches('.btn-save-link')) {
@@ -884,7 +942,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         linkDisplay.className = 'product-link-display';
                         linkDisplay.innerHTML = `Current Link: <a href="${validUrl}" target="_blank" class="text-link">${validUrl}</a>`;
                         target.parentElement.insertAdjacentElement('afterend', linkDisplay);
-                        showMessage('#admin', "Product link saved successfully.", false);
+                        showMessage('#admin', "Product link saved successfully.", false, 2000);
                     } else {
                         console.log(`Clearing product link for ${normTitle} by user ${state.user.id}`);
                         await setDoc(doc(db, 'product-links', normTitle), {
@@ -894,14 +952,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                         const linkDisplay = target.closest('.review-card').querySelector('.product-link-display');
                         if (linkDisplay) linkDisplay.remove();
-                        showMessage('#admin', "Product link cleared.", false);
+                        showMessage('#admin', "Product link cleared.", false, 2000);
                     }
                 } catch (error) {
                     console.error(`Error saving product link for ${normTitle}:`, error.code, error.message, { userId: state.user.id });
                     if (error.message.includes('Invalid URL')) {
-                        showMessage('#admin', "Please enter a valid URL (e.g., https://example.com).", true);
+                        showMessage('#admin', "Please enter a valid URL (e.g., https://example.com).", true, 2000);
                     } else {
-                        showMessage('#admin', `Failed to save product link: ${error.message}`, true);
+                        showMessage('#admin', `Failed to save product link: ${error.message}`, true, 2000);
                     }
                     target.disabled = false;
                 }
@@ -917,10 +975,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         category,
                         originalTitle
                     });
-                    showMessage('#admin', `Sponsored status for "${originalTitle}" updated successfully.`, false);
+                    showMessage('#admin', `Sponsored status for "${originalTitle}" updated successfully.`, false, 2000);
                 } catch (error) {
                     console.error(`Error updating sponsored status for ${normTitle}:`, error);
-                    showMessage('#admin', "Failed to update sponsored status. Try again.", true);
+                    showMessage('#admin', "Failed to update sponsored status. Try again.", true, 2000);
                     target.checked = !isSponsored;
                 }
             }
@@ -928,7 +986,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showThankYouModal(title, message) {
-        showMessage('#review', message, false);
+        showMessage('#review', message, false, 4000);
     }
 
     const forgotPasswordBtn = document.getElementById("forgot-password-btn");
@@ -1018,3 +1076,12 @@ function formatDateOrDaysAgo(timestamp) {
         return date.toLocaleDateString('en-GB');
     }
 }
+// Toggle back-to-top button visibility based on scroll position
+        window.addEventListener('scroll', () => {
+            const backToTopButton = document.getElementById('back-to-top');
+            if (window.scrollY > 300) { // Show button after scrolling 300px
+                backToTopButton.classList.add('visible');
+            } else {
+                backToTopButton.classList.remove('visible');
+            }
+        });

@@ -7,201 +7,205 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, query, where, addDoc } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+import { getFirestore, collection, getDocs, query, where, addDoc } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDuM804L-1zEvcP8i0KiNYU2vXaLSbW3nc",
-            authDomain: "perfume-rating.firebaseapp.com",
-            projectId: "perfume-rating",
-            storageBucket: "perfume-rating.appspot.com",
-            messagingSenderId: "1037621518138",
-            appId: "1:1037621518138:web:13302a5e55930a46c6ba03",
-            measurementId: "G-3NCT4SYQ8Q"
-        };
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+const firebaseConfig = {
+    apiKey: "AIzaSyDuM804L-1zEvcP8i0KiNYU2vXaLSbW3nc",
+    authDomain: "perfume-rating.firebaseapp.com",
+    projectId: "perfume-rating",
+    storageBucket: "perfume-rating.appspot.com",
+    messagingSenderId: "1037621518138",
+    appId: "1:1037621518138:web:13302a5e55930a46c6ba03",
+    measurementId: "G-3NCT4SYQ8Q"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-        async function loadSponsoredPerfumes() {
-            const perfumeGrid = document.querySelector('.perfume-grid');
-            perfumeGrid.innerHTML = '<p style="text-align: center; color: #f7d468;">Loading sponsored perfumes...</p>';
-            try {
-                const sponsoredRef = collection(db, 'sponsored-perfumes');
-                const sponsoredQuery = query(sponsoredRef, where('isSponsored', '==', true));
-                const sponsoredSnapshot = await getDocs(sponsoredQuery);
-                const sponsoredPerfumes = sponsoredSnapshot.docs.map(doc => ({
-                    normTitle: doc.id,
-                    ...doc.data()
-                }));
+async function loadSponsoredPerfumes() {
+    const perfumeGrid = document.querySelector('.perfume-grid');
+    perfumeGrid.innerHTML = '<p style="text-align: center; color: #f7d468;">Loading sponsored perfumes...</p>';
+    
+    try {
+        const sponsoredRef = collection(db, 'sponsored-perfumes');
+        const sponsoredQuery = query(sponsoredRef, where('isSponsored', '==', true));
+        const sponsoredSnapshot = await getDocs(sponsoredQuery);
+        const sponsoredPerfumes = sponsoredSnapshot.docs.map(doc => ({
+            normTitle: doc.id,
+            ...doc.data()
+        }));
 
-                if (sponsoredPerfumes.length === 0) {
-                    perfumeGrid.innerHTML = '<p style="text-align: center; color: #f7d468;">No sponsored perfumes available.</p>';
-                    return;
+        if (sponsoredPerfumes.length === 0) {
+            perfumeGrid.innerHTML = '<p style="text-align: center; color: #f7d468;">No sponsored perfumes available.</p>';
+            return;
+        }
+
+        perfumeGrid.innerHTML = '';
+        const categories = ['him', 'her', 'parents', 'me'];
+        const renderedTitles = new Set();
+
+        for (const perfume of sponsoredPerfumes) {
+            if (renderedTitles.has(perfume.originalTitle)) continue;
+
+            let reviews = [];
+            let photo = perfume.photo || '';
+
+            for (const category of categories) {
+                const reviewsRef = collection(db, 'reviews', category, 'items');
+                const q = query(reviewsRef, where('title', '==', perfume.originalTitle), where('status', '==', 'approved'));
+                const querySnapshot = await getDocs(q);
+                const results = querySnapshot.docs.map(doc => doc.data());
+                reviews.push(...results);
+
+                if (!photo) {
+                    const reviewWithPhoto = results.find(r => r.photo);
+                    if (reviewWithPhoto) photo = reviewWithPhoto.photo;
                 }
-
-                perfumeGrid.innerHTML = '';
-                const categories = ['him', 'her', 'parents', 'me'];
-                for (const perfume of sponsoredPerfumes) {
-                    let reviews = [];
-                    let photo = perfume.photo || '';
-                    for (const category of categories) {
-                        const reviewsRef = collection(db, 'reviews', category, 'items');
-                        const q = query(reviewsRef, where('title', '==', perfume.originalTitle), where('status', '==', 'approved'));
-                        const querySnapshot = await getDocs(q);
-                        reviews.push(...querySnapshot.docs.map(doc => doc.data()));
-                        if (!photo) {
-                            const reviewWithPhoto = querySnapshot.docs.find(doc => doc.data().photo);
-                            if (reviewWithPhoto) photo = reviewWithPhoto.data().photo;
-                        }
-                    }
-
-                    const avgRating = reviews.length > 0
-                        ? (reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1)
-                        : 0;
-                    const reviewCount = reviews.length;
-                    const starsHTML = Array.from({ length: 5 }, (_, i) =>
-                        `<i class="fas fa-star star ${i < Math.round(avgRating) ? '' : 'empty'}"></i>`
-                    ).join('');
-
-                    const card = document.createElement('div');
-                    card.className = 'perfume-card';
-                    card.innerHTML = `
-                        <div class="perfume-image">
-                            <img src="${photo || 'https://via.placeholder.com/400x200?text=No+Image'}" alt="${perfume.originalTitle}">
-                            <i class="fas fa-heart heart-icon"></i>
-                        </div>
-                        <h3 class="perfume-name">${perfume.originalTitle}</h3>
-                        <p class="perfume-brand">${perfume.category.charAt(0).toUpperCase() + perfume.category.slice(1)}</p>
-                        <div class="rating-container">
-                            <div class="stars">${starsHTML}</div>
-                            <span class="review-count">(${reviewCount} reviews)</span>
-                        </div>
-                        <div class="perfume-notes">
-                            <span class="note-tag">Generic</span>
-                        </div>
-                        <div class="perfume-footer">
-                            <span class="perfume-price">$100</span>
-                            <button class="view-button" onclick="location.href='discovery.html#review?category=${perfume.category}'">Give Review</button>
-                        </div>
-                    `;
-                    perfumeGrid.appendChild(card);
-                }
-            } catch (error) {
-                console.error('Error loading sponsored perfumes:', error);
-                perfumeGrid.innerHTML = '<p style="text-align: center; color: #ff6b6b;">Error loading sponsored perfumes.</p>';
-            }
-        }
-
-        function formatDateOrDaysAgo(timestamp) {
-            if (!timestamp) return '';
-            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-            const now = new Date();
-            const diffMs = now - date;
-            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-            if (diffDays < 1) return " 키키키Today";
-            if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-            return date.toLocaleDateString('en-GB');
-        }
-
-        async function submitContactForm(e) {
-            e.preventDefault();
-            const form = e.target;
-            const messageDiv = document.getElementById('contact-message');
-            const firstName = form.querySelector('input[placeholder="Your first name"]').value.trim();
-            const lastName = form.querySelector('input[placeholder="Your last name"]').value.trim();
-            const email = form.querySelector('input[placeholder="your.email@example.com"]').value.trim();
-            const subject = form.querySelector('input[placeholder="Message subject"]').value.trim();
-            const message = form.querySelector('textarea[placeholder="Write your message here..."]').value.trim();
-
-            if (!firstName || !lastName || !email || !subject || !message) {
-                messageDiv.textContent = 'Please fill out all fields.';
-                messageDiv.style.color = '#ff6b6b';
-                return;
             }
 
-            try {
-                await addDoc(collection(db, 'contact-messages'), {
-                    firstName,
-                    lastName,
-                    email,
-                    subject,
-                    message,
-                    timestamp: new Date(),
-                    status: 'unread'
-                });
-                messageDiv.textContent = 'Message sent successfully!';
-                messageDiv.style.color = '#D4AF37';
-                form.reset();
-            } catch (error) {
-                console.error('Error submitting contact form:', error);
-                messageDiv.textContent = 'Error sending message. Please try again.';
-                messageDiv.style.color = '#ff6b6b';
-            }
-        }
+            if (reviews.length === 0) continue; // Skip perfumes with no approved reviews
 
-        function submitNewsletterForm(e) {
-            e.preventDefault();
-            const form = e.target;
-            const messageDiv = document.getElementById('newsletter-message');
-            const formData = new FormData(form);
-            fetch(form.action, {
-                method: 'POST',
-                mode: 'no-cors',
-                body: formData
-            }).then(() => {
-                messageDiv.textContent = 'Thank you for subscribing!';
-                form.reset();
-            }).catch(() => {
-                messageDiv.textContent = 'Thank you for subscribing!';
-                form.reset();
-            });
-            return false;
-        }
+            renderedTitles.add(perfume.originalTitle); // Prevent duplicates
 
-        document.addEventListener('DOMContentLoaded', () => {
-            loadSponsoredPerfumes();
-            const contactForm = document.querySelector('.contact-form');
-            if (contactForm) {
-                contactForm.addEventListener('submit', submitContactForm);
-            }
+            const avgRating = (reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1);
+            const reviewCount = reviews.length;
+            const starsHTML = Array.from({ length: 5 }, (_, i) =>
+                `<i class="fas fa-star star ${i < Math.round(avgRating) ? '' : 'empty'}"></i>`
+            ).join('');
+
+            const card = document.createElement('div');
+            card.className = 'perfume-card';
+            card.setAttribute('data-norm-title', perfume.normTitle);
+            card.innerHTML = `
+                <div class="perfume-image">
+                    <img src="${photo || 'https://via.placeholder.com/400x200?text=No+Image'}" alt="${perfume.originalTitle}">
+                    <i class="fas fa-heart heart-icon"></i>
+                </div>
+                <h3 class="perfume-name">${perfume.originalTitle}</h3>
+                <p class="perfume-brand">${perfume.category.charAt(0).toUpperCase() + perfume.category.slice(1)}</p>
+                <div class="rating-container">
+                    <div class="stars">${starsHTML}</div>
+                    <span class="review-count">(${reviewCount} reviews)</span>
+                </div>
+                <div class="perfume-notes">
+                    <span class="note-tag">Generic</span>
+                </div>
+                <div class="perfume-footer">
+                    <span class="perfume-price">$100</span>
+                    <button class="view-button" onclick="location.href='discovery.html#review?category=${perfume.category}'">Give Review</button>
+                </div>
+            `;
+            perfumeGrid.appendChild(card);
+        }
+    } catch (error) {
+        console.error('Error loading sponsored perfumes:', error);
+        perfumeGrid.innerHTML = '<p style="text-align: center; color: #ff6b6b;">Error loading sponsored perfumes.</p>';
+    }
+}
+
+function formatDateOrDaysAgo(timestamp) {
+    if (!timestamp) return '';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays < 1) return "Today";
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString('en-GB');
+}
+
+async function submitContactForm(e) {
+    e.preventDefault();
+    const form = e.target;
+    const messageDiv = document.getElementById('contact-message');
+    const firstName = form.querySelector('input[placeholder="Your first name"]').value.trim();
+    const lastName = form.querySelector('input[placeholder="Your last name"]').value.trim();
+    const email = form.querySelector('input[placeholder="your.email@example.com"]').value.trim();
+    const subject = form.querySelector('input[placeholder="Message subject"]').value.trim();
+    const message = form.querySelector('textarea[placeholder="Write your message here..."]').value.trim();
+
+    if (!firstName || !lastName || !email || !subject || !message) {
+        messageDiv.textContent = 'Please fill out all fields.';
+        messageDiv.style.color = '#ff6b6b';
+        return;
+    }
+
+    try {
+        await addDoc(collection(db, 'contact-messages'), {
+            firstName,
+            lastName,
+            email,
+            subject,
+            message,
+            timestamp: new Date(),
+            status: 'unread'
         });
+        messageDiv.textContent = 'Message sent successfully!';
+        messageDiv.style.color = '#D4AF37';
+        form.reset();
+    } catch (error) {
+        console.error('Error submitting contact form:', error);
+        messageDiv.textContent = 'Error sending message. Please try again.';
+        messageDiv.style.color = '#ff6b6b';
+    }
+}
 
-        function toggleMenu() {
-            const navMenu = document.getElementById('nav-menu');
-            const hamburger = document.getElementById('hamburger');
-            navMenu.classList.toggle('active');
-            hamburger.classList.toggle('active');
-        }
-
-        function closeMenu() {
-            const navMenu = document.getElementById('nav-menu');
-            const hamburger = document.getElementById('hamburger');
-            navMenu.classList.remove('active');
-            hamburger.classList.remove('active');
-        }
-
-        document.addEventListener('click', function(event) {
-            const navMenu = document.getElementById('nav-menu');
-            const hamburger = document.getElementById('hamburger');
-            const navbar = document.querySelector('.navbar');
-            if (!navbar.contains(event.target)) {
-                navMenu.classList.remove('active');
-                hamburger.classList.remove('active');
-            }
-        });
-document.addEventListener('DOMContentLoaded', () => {
-        // Existing listeners
-        loadSponsoredPerfumes();
-        const contactForm = document.querySelector('.contact-form');
-        if (contactForm) {
-            contactForm.addEventListener('submit', submitContactForm);
-        }
-
-        // ✅ Add this to enable hamburger toggle
-        const hamburger = document.getElementById('hamburger');
-        if (hamburger) {
-            hamburger.addEventListener('click', toggleMenu);
-        }
+function submitNewsletterForm(e) {
+    e.preventDefault();
+    const form = e.target;
+    const messageDiv = document.getElementById('newsletter-message');
+    const formData = new FormData(form);
+    fetch(form.action, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: formData
+    }).then(() => {
+        messageDiv.textContent = 'Thank you for subscribing!';
+        form.reset();
+    }).catch(() => {
+        messageDiv.textContent = 'Thank you for subscribing!';
+        form.reset();
     });
+    return false;
+}
+
+function toggleMenu() {
+    const navMenu = document.getElementById('nav-menu');
+    const hamburger = document.getElementById('hamburger');
+    navMenu.classList.toggle('active');
+    hamburger.classList.toggle('active');
+}
+
+function closeMenu() {
+    const navMenu = document.getElementById('nav-menu');
+    const hamburger = document.getElementById('hamburger');
+    navMenu.classList.remove('active');
+    hamburger.classList.remove('active');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadSponsoredPerfumes();
+
+    const contactForm = document.querySelector('.contact-form');
+    if (contactForm) {
+        contactForm.addEventListener('submit', submitContactForm);
+    }
+
+    const hamburger = document.getElementById('hamburger');
+    if (hamburger) {
+        hamburger.addEventListener('click', toggleMenu);
+    }
+});
+
+document.addEventListener('click', function (event) {
+    const navMenu = document.getElementById('nav-menu');
+    const hamburger = document.getElementById('hamburger');
+    const navbar = document.querySelector('.navbar');
+    if (!navbar.contains(event.target)) {
+        navMenu.classList.remove('active');
+        hamburger.classList.remove('active');
+    }
+});
+
     </script>
 <style>
 * {

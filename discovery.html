@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Roboto:wght@300;400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -51,10 +52,12 @@
                     </div>
                     <button type="submit" class="btn">Create Account</button>
                 </form>
-                <button class="btn btn-google" id="google-signup-btn" type="button">
-                    <img src="https://static.vecteezy.com/system/resources/previews/022/613/027/non_2x/google-icon-logo-symbol-free-png.png" alt="Google logo">
-                    <span>Sign up with Google</span>
-                </button>
+               <button class="btn btn-google" id="google-signup-btn" type="button">
+    <img src="https://static.vecteezy.com/system/resources/previews/022/613/027/non_2x/google-icon-logo-symbol-free-png.png" alt="Google logo">
+    <span>Sign up with Google</span>
+</button>
+<p class="google-safe-note"> Google handles the sign-up process securely. We dont have your credentials.</p>
+
                 <p style="margin-top:1rem;">Already have an account? <a href="#login" class="text-link">Log In</a></p>
             </section>
             <div id="auth-message" class="auth-message"></div>
@@ -106,19 +109,26 @@
         </main>
     </div>
 
-    <!-- Category Selection Page -->
-    <div id="page-category-selection" class="page">
-        <a href="index.html" class="btn btn-home">Home</a>
-        <main class="container">
-            <h1 id="category-header">Select a Category</h1>
-            <section id="category-selection">
-                <div class="card" data-category="him"><h2>For Him</h2></div>
-                <div class="card" data-category="her"><h2>For Her</h2></div>
-                <div class="card" data-category="parents"><h2>For Parents</h2></div>
-                <div class="card" data-category="me"><h2>For Me</h2></div>
-            </section>
-        </main>
-    </div>
+   <!-- Category Selection Page -->
+<div id="page-category-selection" class="page">
+    <a href="index.html" class="btn btn-home">Home</a>
+    <main class="container">
+
+      <div id="category-message-placeholder"></div>
+
+
+        <h1 id="category-header">Select a Category</h1>
+
+        <section id="category-selection">
+            <div class="card" data-category="him"><h2>For Him</h2></div>
+            <div class="card" data-category="her"><h2>For Her</h2></div>
+            <div class="card" data-category="parents"><h2>For Parents</h2></div>
+            <div class="card" data-category="me"><h2>For Me</h2></div>
+        </section>
+    </main>
+</div>
+
+
 
     <!-- Question Page -->
     <div id="page-question" class="page">
@@ -135,46 +145,53 @@
         </main>
     </div>
 
-    <!-- Review Page -->
-    <div id="page-review" class="page">
-        <a href="index.html" class="btn btn-home">Home</a>
-        <main class="container">
-            <section id="review-page-content">
-                <h1 id="review-header"></h1>
-                <form id="review-form">
-                    <div class="form-group">
-                        <label for="photo">Upload Photo</label>
-                        <input type="file" id="photo" accept="image/*">
-                        <img id="photo-preview" class="photo-preview" src="" alt="Photo Preview">
+<!-- Review Page -->
+<div id="page-review" class="page">
+    <a href="index.html" class="btn btn-home">Home</a>
+    <main class="container">
+        <section id="review-page-content">
+
+            <h1 id="review-header"></h1>
+
+            <form id="review-form">
+                <div class="form-group">
+                    <label for="photo">Upload Photo</label>
+                    <input type="file" id="photo" accept="image/*">
+                    <img id="photo-preview" class="photo-preview" src="" alt="Photo Preview">
+                </div>
+                <div class="form-group">
+                    <label>Rating</label>
+                    <div class="star-rating" id="star-rating" role="radiogroup">
+                        <span class="star" data-value="1" role="radio">★</span>
+                        <span class="star" data-value="2" role="radio">★</span>
+                        <span class="star" data-value="3" role="radio">★</span>
+                        <span class="star" data-value="4" role="radio">★</span>
+                        <span class="star" data-value="5" role="radio">★</span>
                     </div>
-                    <div class="form-group">
-                        <label>Rating</label>
-                        <div class="star-rating" id="star-rating" role="radiogroup">
-                            <span class="star" data-value="1" role="radio">★</span>
-                            <span class="star" data-value="2" role="radio">★</span>
-                            <span class="star" data-value="3" role="radio">★</span>
-                            <span class="star" data-value="4" role="radio">★</span>
-                            <span class="star" data-value="5" role="radio">★</span>
-                        </div>
-                        <span id="rating-number" style="margin-left: 10px; font-weight: bold; color: gold; font-size: 1.2rem; user-select:none;"></span>
-                    </div>
-                    <div class="form-group">
-                        <label for="title">Perfume Name / Title</label>
-                        <input type="text" id="title" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="comments">Comments</label>
-                        <textarea id="comments" rows="4" required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="date-used">Date First Used</label>
-                        <input type="date" id="date-used" required>
-                    </div>
-                    <button type="submit" id="submit-review" class="btn" disabled>Submit Review</button>
-                </form>
-            </section>
-        </main>
-    </div>
+                    <span id="rating-number"></span>
+                </div>
+                <div class="form-group">
+                    <label for="title">Perfume Name / Title</label>
+                    <input type="text" id="title" required>
+                </div>
+                <div class="form-group">
+                    <label for="comments">Comments</label>
+                    <textarea id="comments" rows="4" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="date-used">Date First Used</label>
+                    <input type="date" id="date-used" required>
+                </div>
+                <button type="submit" id="submit-review" class="btn" disabled>Submit Review</button>
+
+                <!-- Dynamic message placeholder BELOW submit button -->
+                <div id="review-message-placeholder"></div>
+            </form>
+        </section>
+    </main>
+</div>
+
+
 
     <!-- Main Page -->
     <div id="page-main" class="page">
@@ -201,16 +218,7 @@
         <a href="index.html" class="btn btn-home">Home</a>
         <header class="page-header">
             <h1 id="my-reviews-header">My Reviews</h1>
-            <div class="filters">
-                <label for="sort-by-my-reviews">Sort By:</label>
-                <select id="sort-by-my-reviews">
-                    <option value="newest">Newest First</option>
-                    <option value="oldest">Oldest First</option>
-                    <option value="highest-rating">Highest Rating</option>
-                    <option value="lowest-rating">Lowest Rating</option>
-                </select>
-            </div>
-        </header>
+                    </header>
         <main class="container">
             <section id="my-reviews-grid"></section>
         </main>
@@ -235,18 +243,25 @@
     </main>
 </div>
 
-
-    <!-- Admin Page -->
-    <div id="page-admin" class="page">
-        <a href="index.html" class="btn btn-home">Home</a>
-        <header class="page-header">
-            <h1 id="admin-header">Admin Panel</h1>
-            <p>Approve or reject new reviews.</p>
-        </header>
-        <main class="container">
-            <section id="admin-reviews-grid"></section>
-        </main>
-    </div>
+<!-- Admin -->
+<div id="page-admin" class="page">
+    <a href="index.html" class="btn btn-home">Home</a>
+    <header class="page-header">
+        <h1 id="admin-header">Admin Panel</h1>
+            </header>
+    <nav class="admin-nav">
+        <a href="#pending-reviews" class="nav-link" data-section="pending-reviews">Pending Reviews</a>
+        <a href="#approved-reviews" class="nav-link" data-section="approved-reviews">Approved Reviews</a>
+        <a href="#sponsored-perfumes" class="nav-link" data-section="sponsored-perfumes">Sponsored Perfumes</a>
+        <a href="#contact-messages" class="nav-link" data-section="contact-messages">Contact Messages</a>
+    </nav>
+    <main class="container">
+        <section id="admin-reviews-grid"></section>
+    </main>
+<button id="back-to-top" class="btn back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" title="Back to Top">
+  <i class="fas fa-arrow-up"></i>
+</button>
+            </div>
 
     <noscript>
         <p class="no-js-message">Please enable JavaScript to fully use this website.</p>
