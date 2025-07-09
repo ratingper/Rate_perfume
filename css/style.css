@@ -1357,9 +1357,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   margin: 1rem 0 2rem;
   border-bottom: 2px solid #ddd;
   padding-bottom: 0.25rem;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  justify-content: center;  /* Center horizontally */
-  flex-wrap: wrap;          /* Allow wrapping on small screens */
+  font-family: 'Segoe UI', 
+  justify-content: center;  
+  flex-wrap: wrap;          
 }
 
 /* Links */
@@ -1371,7 +1371,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   position: relative;
   transition: color 0.3s ease;
   cursor: pointer;
-  white-space: nowrap; /* Prevent breaking words */
+  white-space: nowrap; 
 }
 
 /* Hover */
