@@ -1357,7 +1357,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   margin: 1rem 0 2rem;
   border-bottom: 2px solid #ddd;
   padding-bottom: 0.25rem;
-  font-family: 'Segoe UI', 
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   justify-content: center;  
   flex-wrap: wrap;          
 }
