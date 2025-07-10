@@ -1484,4 +1484,15 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   fill: red;
   transform: scale(1.1);
 }
+.logo-container {
+  text-align: center;
+  margin: 1rem 0 2rem;
+}
+
+.review-logo {
+  max-width: 160px;
+  height: auto;
+  display: inline-block;
+}
+
 
