@@ -503,7 +503,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const productUrl = productLinks[normTitle];
                 const getOneLink = productUrl
-                    ? `<a href="${productUrl}" target="_blank" rel="noopener noreferrer" class="get-one-link">Get One</a>`
+                     ? `<a href="${productUrl}" target="_blank" rel="noopener noreferrer" class="get-one-link">
+       <img src="assets/bag.png" alt="Get One" class="get-one-icon" />
+</a>`
                     : '';
                 const reviewLink = `<a href="#review?category=${state.category}&perfume=${encodeURIComponent(originalTitle)}" class="text-link">Give Review</a>`;
 
@@ -611,8 +613,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 ).join('');
                 const productUrl = productLinks[normTitle];
                 const getOneLink = productUrl
-                    ? `<a href="${productUrl}" target="_blank" rel="noopener noreferrer" class="get-one-link">Get One</a>`
-                    : '';
+  ? `<a href="${productUrl}" target="_blank" rel="noopener noreferrer" class="get-one-link">
+       <img src="assets/bag.png" alt="Get One" style="width:24px; height:auto; vertical-align:middle;" />
+     </a>`
+  : '';
+
 
                 card.innerHTML = `
                     ${review.photo ? `<img src="${review.photo}" alt="${review.title || ''}">` : ''}
