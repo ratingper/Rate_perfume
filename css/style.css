@@ -1446,5 +1446,5 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 .back-to-top:hover {
-    background: rgba(255, 215, 0, 0.8); /* Slightly darker gold on hover */
+    background: rgba(255, 215, 0, 0.8); 
 }

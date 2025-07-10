@@ -720,12 +720,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     grid.appendChild(card);
                 });
             }
+const approvedSection = document.createElement('section');
+approvedSection.id = 'approved-reviews';
+// (rest of the code adding content and appending it)
+grid.appendChild(approvedSection);
 
-            if (allApprovedReviews.length === 0) {
-                grid.innerHTML += '<h2 id="approved-reviews" style="text-align:center; color: var(--accent-gold); margin: 2rem 0 1rem 0; display: block; width: 100%;">Approved Reviews</h2>';
+
+             if (allApprovedReviews.length === 0) {
                 grid.innerHTML += '<p style="text-align:center; font-weight:bold; margin-top: 2rem;">No approved reviews.</p>';
             } else {
-                grid.innerHTML += '<h2 id="approved-reviews" style="text-align:center; color: var(--accent-gold); margin: 2rem 0 1rem 0; display: block; width: 100%;">Approved Reviews</h2>';
+                grid.innerHTML += '<h2 style="text-align:center; color: var(--accent-gold); margin: 2rem 0 1rem 0; display: block; width: 100%;">Approved Reviews</h2>';
                 const approvedPerfumeMap = new Map();
                 allApprovedReviews.forEach(review => {
                     const normTitle = review.title?.toLowerCase().trim();
@@ -1084,4 +1088,4 @@ function formatDateOrDaysAgo(timestamp) {
             } else {
                 backToTopButton.classList.remove('visible');
             }
-        });
+        }); 
