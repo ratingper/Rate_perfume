@@ -1072,18 +1072,41 @@ grid.appendChild(approvedSection);
 function formatDateOrDaysAgo(timestamp) {
     if (!timestamp) return '';
 
+    // Convert Firestore timestamp or other timestamp to Date object
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     const now = new Date();
     const diffMs = now - date;
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffSeconds = Math.floor(diffMs / 1000);
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    const diffWeeks = Math.floor(diffDays / 7);
+    const diffMonths = Math.floor(diffDays / 30); // Approximate months
+    const diffYears = Math.floor(diffDays / 365); // Approximate years
 
-    if (diffDays < 1) {
-        return "Today";
+    // Handle relative time formats for recent reviews
+    if (diffSeconds < 60) {
+        return 'Just now';
+    } else if (diffMinutes < 60) {
+        return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
+    } else if (diffHours < 24) {
+        return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
     } else if (diffDays < 7) {
         return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-    } else {
-        return date.toLocaleDateString('en-GB');
+    } else if (diffWeeks < 4) {
+        return `${diffWeeks} week${diffWeeks > 1 ? 's' : ''} ago`;
+    } else if (diffMonths < 12) {
+        return `${diffMonths} month${diffMonths > 1 ? 's' : ''} ago`;
+    } else if (diffYears >= 1) {
+        return `${diffYears} year${diffYears > 1 ? 's' : ''} ago`;
     }
+
+    // Use absolute date for very old reviews
+    return date.toLocaleDateString('en-GB', {
+        year: 'numeric',
+        month: 'short', // e.g., "Dec" instead of "December"
+        day: 'numeric'  // e.g., "12"
+    }); // Outputs like "12 Dec 2024"
 }
 // Toggle back-to-top button visibility based on scroll position
         window.addEventListener('scroll', () => {
